@@ -1,0 +1,85 @@
+<?php
+/**
+ * Tests the functionality of the Simpletest example content type.
+ */
+class GoogleMapsApiTestCase extends DrupalWebTestCase {
+  protected $privileged_user;
+  
+  private $gmap_key;
+  
+  public static function getInfo() {
+    // Note: getInfo() strings are not translated with t().
+    return array(
+      'name' => 'Google Maps Api',
+      'description' => 'Test functionnalities.',
+      'group' => 'Google Maps',
+    );
+  }
+  
+  public function setUp() {
+    // Enable any modules required for the test. This should be an array of
+    // module names.
+    parent::setUp(array('google_maps_api'));
+    // Create and log in our privileged user.
+    $this->privileged_user = $this->drupalCreateUser(array(
+      'google_maps_api_administration',
+      ));
+    $this->drupalLogin($this->privileged_user);
+    
+    $this->gmap_key = 'AIzaSyDP62HVHH8o3-ZzDB9Ezk54kLvtkHN94u4';
+  }
+  
+  public function testGoogleMapsApiVariables() {
+    // Create node to edit.
+    $edit = array();
+    $edit['key'] = $this->gmap_key;
+    $this->drupalPost('admin/structure/googlemaps/configuration', $edit, t('Save'));
+    $this->assertFieldById('edit-key', $this->gmap_key, 'Variable Key is set to gmap_key');
+    
+  }
+  
+  public function testGoogleMapsApiConfiguration() {
+    // Create configuration data
+    $edit = array();
+    $edit['name'] = 'Test Config 1';
+    $edit['config_name'] = preg_replace('#[^a-z0-9-]+#', '_', strtolower($edit['name']));
+    
+    $edit['latitude'] = -34.397;
+    $edit['longitude'] = 150.644;
+    
+    $edit['zoom'] = 12;
+    
+    $edit['zoom_control'] = 1;
+    $edit['zoom_control_type'] = 0;
+    $edit['map_type_control'] = 1;
+    $edit['map_type_control_styles'] = 0;
+    $edit['pan_control'] = 1;
+    $edit['scale_control'] = 1;
+    $edit['street_view_control'] = 1;
+    $edit['overview_map_control'] = 1;
+    
+    // Test form add configuration
+    $this->drupalPost('admin/structure/googlemaps/configurations/add', $edit, t('Save'));
+    $this->assertNoRaw('<div class="messages error">', 'Configuration "' . $edit['name'] . '" saved.');
+    
+    // Test form edit configuration
+    $this->drupalGet('admin/structure/googlemaps/configurations/' . $edit['config_name'] . '/edit');
+    $this->assertFieldById('edit-name', $edit['name'], 'Name is valid');
+    $this->assertFieldById('edit-config-name', $edit['config_name'], 'Configuration Name is valid');
+    $this->assertFieldById('edit-latitude', $edit['latitude'], 'Latitude is valid');
+    $this->assertFieldById('edit-longitude', $edit['longitude'], 'Longitude is valid');
+    $this->assertFieldById('edit-zoom', $edit['zoom'], 'Zoom is valid');
+    $this->assertFieldByName('zoom_control', $edit['zoom_control'], 'Zoom Control is valid');
+    $this->assertFieldByName('zoom_control_type', $edit['zoom_control_type'], 'Zoom Control Type is valid');
+    $this->assertFieldByName('map_type_control', $edit['map_type_control'], 'Map Type Control is valid');
+    $this->assertFieldByName('map_type_control_styles', $edit['map_type_control_styles'], 'Map Type Control Styles is valid');
+    $this->assertFieldByName('pan_control', $edit['pan_control'], 'Pan Control is valid');
+    $this->assertFieldByName('scale_control', $edit['scale_control'], 'Scale Control is valid');
+    $this->assertFieldByName('street_view_control', $edit['street_view_control'], 'Street View Control is valid');
+    $this->assertFieldByName('overview_map_control', $edit['overview_map_control'], 'Overview Map Control is valid');
+    
+  }
+}
+
+
+?>

@@ -1,0 +1,10 @@
+name = Google Maps API Javascript
+description = API for module using google maps
+package = Google Maps
+version = "7.x-0.1beta"
+core = 7.x
+
+configure = structure/googlemaps
+
+files[]=google_maps_api.test
+testing_api = 2.x

@@ -1,0 +1,351 @@
+<?php
+/**
+ * Implements hook_menu
+ */
+function google_maps_api_menu() {
+  $items['admin/structure/googlemaps'] = array(
+    'title' => 'Google Maps',
+    'type' => MENU_NORMAL_ITEM,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('google_maps_api_configurations'),
+    'access arguments' => array('google_maps_api_administration'),
+    'file' => 'google_maps_api.admin.inc'
+  );
+  $items['admin/structure/googlemaps/configurations'] = array(
+    'title' => 'Available configurations',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  $items['admin/structure/googlemaps/configuration'] = array(
+    'title' => 'Generic informations',
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('google_maps_api_configuration_generic'),
+    'access arguments' => array('google_maps_api_administration'),
+    'file' => 'google_maps_api.admin.inc'
+  );
+  $items['admin/structure/googlemaps/configurations/add'] = array(
+    'title' => 'Add a new configuration',
+    'type' => MENU_LOCAL_ACTION,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('google_maps_api_configurations_edit'),
+    'access arguments' => array('google_maps_api_administration'),
+    'file' => 'google_maps_api.admin.inc'
+  );
+  $items['admin/structure/googlemaps/configurations/%google_maps_api_configurations_by_config_name/edit'] = array(
+    'title' => 'Edit configuration',
+    'type' => MENU_CALLBACK,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('google_maps_api_configurations_edit', 4),
+    'access arguments' => array('google_maps_api_administration'),
+    'file' => 'google_maps_api.admin.inc'
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_permission
+ * @return type
+ */
+function google_maps_api_permission() {
+  return array(
+      'google_maps_api_administration' => array(
+          'title' => 'Admin Google Maps',
+          'restrict access' => TRUE
+      )
+  );
+}
+
+/**
+ * Check if config name exists
+ * 
+ * @param string $config_name
+ * 
+ * @return boolean
+ */
+function google_maps_api_configurations_config_name_exists($config_name) {
+  $configuration = google_maps_api_configurations_by_config_name_load($config_name);
+  if ($configuration !== FALSE) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * CRUD select variable
+ * Select variable by name
+ * 
+ * @param string $name
+ * 
+ * @return mixed
+ *  The variable value or NULL
+ */
+function google_maps_api_variables_select($name) {
+  $variables = google_maps_api_variables_select_multiple(array($name));
+  return $variables[$name];
+}
+
+/**
+ * CRUD select variables
+ * Select variables by name
+ * 
+ * @param array $names array of name
+ * 
+ * @return array()
+ */
+function google_maps_api_variables_select_multiple($names) {
+  $cached = &drupal_static(__FUNCTION__, array());
+  $to_cache = array_diff($names, array_keys($cached));
+  
+  if (! empty($to_cache)) {
+    $query = 'SELECT name, value, type FROM google_maps_variables WHERE name IN (:name)';
+    $result = db_query($query, array(':name' => $to_cache));
+    while ($variable = $result->fetch()) {
+      switch ($variable->type) {
+        case 'integer':
+          $typed_var = (int)$variable->value;
+          break;
+        case 'string':
+        default:
+          $typed_var = $variable->value;
+          break;
+      }
+      $cached[$variable->name] = $typed_var;
+    }
+  }
+  
+  $return = array();
+  foreach ($names as $name) {
+    $return[$name] = isset($cached[$name])? $cached[$name] : NULL;
+  }
+  return $return;
+}
+
+/**
+ * Save variables
+ * 
+ * @param array $rows
+ *  List of variables to save
+ */
+function google_maps_api_variables_save($rows) {
+  $errors = array();
+  foreach ($rows as $name => $row) {
+    try {
+      db_merge('google_maps_variables')
+        ->key(array(
+            'name' => $name,
+        ))
+        ->fields(array(
+            'value' => $row['value'],
+            'type' => $row['type']
+        ))
+        ->execute();
+      $errors[$name] = TRUE;
+    } catch (Exception $e) {
+      $errors[$name] = FALSE;
+      watchdog('google_maps_api', 'CRUD Variables : Error while inserting a variable : @error', array('@error' => $e->getMessage()), WATCHDOG_ERROR);
+    }
+  }
+  return $errors;
+}
+
+/**
+ * Load configuration by its name
+ * 
+ * @param string $name
+ * 
+ * @return stdClass|FALSE
+ */
+function google_maps_api_configurations_by_config_name_load($config_name) {
+  $query = 'SELECT gmcid FROM google_maps_configurations WHERE config_name = :config_name';
+  $result = db_query($query, array(':config_name' => $config_name));
+  if ($gmcid = $result->fetchField()) {
+    return google_maps_api_configurations_load($gmcid);
+  }
+  return FALSE;
+}
+
+/**
+ * Load a configuration by its gmcid
+ * 
+ * @param int $gmcid
+ * 
+ * @return stdClass|FALSE
+ */
+function google_maps_api_configurations_load($gmcid) {
+  $configurations = google_maps_api_configurations_load_multiple(array($gmcid));
+  return $configurations[$gmcid];
+}
+
+/**
+ * Load configurations by their gmcid
+ * 
+ * @param array $gmcids
+ * 
+ * @return array
+ */
+function google_maps_api_configurations_load_multiple($gmcids) {
+  $cached = &drupal_static(__FUNCTION__, array());
+  $to_cache = array_diff($gmcids, array_keys($cached));
+  
+  if (! empty($to_cache)) {
+    $query = 'SELECT gmcid, name, config_name, latitude, longitude, options, controls FROM google_maps_configurations WHERE gmcid IN (:gmcid)';
+    $result = db_query($query, array(':gmcid' => $to_cache));
+    while ($configuration = $result->fetch()) {
+      $configuration->options = unserialize($configuration->options);
+      $configuration->controls = unserialize($configuration->controls);
+      $cached[$configuration->gmcid] = $configuration;
+    }
+  }
+  
+  $return = array();
+  foreach ($gmcids as $gmcid) {
+    $return[$gmcid] = isset($cached[$gmcid])? $cached[$gmcid] : FALSE;
+  }
+  return $return;
+}
+
+/**
+ * Presave for configuration
+ * 
+ * @param stdClass $configuration
+ * 
+ * @return boolean
+ */
+function google_maps_api_configurations_presave(&$configuration) {
+  $default_configuration = google_maps_api_get_default_configuration();
+  if (! isset($configuration->name)) {
+      drupal_set_message(t('An error occured while pre-saving : @error', array('@error' => t('Name is required'))));
+      return FALSE;
+  }
+  if (! $default_configuration) {
+    if (! isset($configuration->latitude)) {
+        drupal_set_message(t('An error occured while pre-saving : @error', array('@error' => t('Latitude is required'))));
+        return FALSE;
+    }
+    if (! isset($configuration->longitude)) {
+        drupal_set_message(t('An error occured while pre-saving : @error', array('@error' => t('Longitude is required'))));
+        return FALSE;
+    }
+    if (! is_array($configuration->options)) {
+        drupal_set_message(t('An error occured while pre-saving : @error', array('@error' => t('Options is wrong type'))));
+        return FALSE;
+    }
+    if (! is_array($configuration->controls)) {
+        drupal_set_message(t('An error occured while pre-saving : @error', array('@error' => t('Controls is wrong type'))));
+        return FALSE;
+    }
+    return TRUE;
+  }
+  else {
+    if (! isset($configuration->config_name) || empty($configuration->config_name)) {
+      $configuration->config_name = preg_replace('#[^a-z0-9-]+#', '_', strtolower($configuration->name));
+    }
+    
+    $configuration = google_maps_api_merge_configuration($configuration, $default_configuration);
+
+    return TRUE;
+  }
+}
+
+/**
+ * Merge two configuration
+ * 
+ * @param stdClass $config1
+ * @param stdClass $config2
+ * 
+ * @return stdClass
+ */
+function google_maps_api_merge_configuration($config1, $config2, $force = FALSE) {
+  if ($force || ! isset($config1->latitude) || empty($config1->latitude)) {
+    $config1->latitude = $config2->latitude;
+  }
+  if ($force || ! isset($config1->longitude) || empty($config1->longitude)) {
+    $config1->longitude = $config2->longitude;
+  }
+  if ($force || ! isset($config1->options) || empty($config1->options)) {
+    $config1->options = $config2->options;
+  }
+  if ($force || ! isset($config1->controls) || empty($config1->controls)) {
+    $config1->controls = $config2->controls;
+  }
+  return $config1;
+}
+
+/**
+ * Save a configuration
+ * 
+ * @param stdClass $configuration
+ * 
+ * @return boolean
+ */
+function google_maps_api_configurations_save($configuration) {
+  $result = google_maps_api_configurations_save_multiple(array($configuration));
+  return $result[$configuration->config_name];
+}
+
+/**
+ * Save configurations
+ * 
+ * @param array $rows
+ * 
+ * @return array
+ */
+function google_maps_api_configurations_save_multiple($rows) {
+  $errors = array();
+  foreach ($rows as $row) {
+    try {
+      db_merge('google_maps_configurations')
+        ->key(array(
+            'gmcid' => $row->gmcid,
+            'config_name' => $row->config_name,
+        ))
+        ->fields(array(
+            'name' => $row->name,
+            'latitude' => $row->latitude,
+            'longitude' => $row->longitude,
+            'options' => serialize($row->options),
+            'controls' => serialize($row->controls)
+        ))
+        ->execute();
+      $errors[$row->config_name] = TRUE;
+    } catch (Exception $e) {
+      watchdog('google_maps_api', 'CRUD Configurations : Error while saving a configuration : @error', array('@error' => $e->getMessage()), WATCHDOG_ERROR);
+      $errors[$row->config_name] = FALSE;
+    }
+  }
+  
+  return $errors;
+}
+
+/**
+ * Delete configurations
+ * 
+ * @param array $gmcids
+ * 
+ * @return boolean
+ */
+function google_maps_api_configurations_delete($gmcids) {
+  try {
+    db_delete('google_maps_configurations')
+      ->condition('gmcid', $gmcids, 'IN')
+      ->execute();
+  } catch (Exception $ex) {
+    watchdog('google_maps_api', 'CRUD Configurations : Error while deleting configurations (@list) : @error', array('@list' => implode(', ', $gmcids), '@error' => $e->getMessage()), WATCHDOG_ERROR);
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/**
+ * Return the default configuration if set up, NULL otherwise
+ * 
+ * @return stdClass
+ */
+function google_maps_api_get_default_configuration() {
+  $default_configuration = NULL;
+  $default_gmcid = google_maps_api_variables_select('default_configuration');
+  if ($default_gmcid) {
+    $default_configuration = google_maps_api_configurations_load($default_gmcid);
+  }
+  return $default_configuration;
+}

@@ -1,0 +1,80 @@
+<?php
+/**
+ * Implements hook_schema
+ */
+function google_maps_api_schema() {
+  $schemas = array(
+      'google_maps_variables' => array(
+          'description' => 'Generic configurations.',
+          'fields' => array(
+              'name' => array(
+                  'description' => 'Variable name.',
+                  'type' => 'varchar',
+                  'length' => 32,
+                  'not null' => TRUE
+              ),
+              'value' => array(
+                  'description' => 'Value of variable.',
+                  'type' => 'blob',
+                  'size' => 'big',
+                  'not null' => TRUE,
+              ),
+              'type' => array(
+                  'description' => 'PHP type of the variable.',
+                  'type' => 'text',
+                  'not null' => FALSE
+              )
+          ),
+          'primary key' => array('name')
+      ),
+      'google_maps_configurations' => array(
+          'description' => 'Google Map configurations.',
+          'fields' => array(
+              'gmcid' => array(
+                  'description' => 'Google Map Configuration IDentifier.',
+                  'type' => 'serial',
+                  'not null' => TRUE
+              ),
+              'config_name' => array(
+                  'description' => 'System name of the configuration.',
+                  'type' => 'varchar',
+                  'length' => 32,
+                  'not null' => TRUE,
+              ),
+              'name' => array(
+                  'description' => 'Name of the configuration.',
+                  'type' => 'varchar',
+                  'length' => 32,
+                  'not null' => TRUE,
+              ),
+              'latitude' => array(
+                  'description' => 'Default latitude',
+                  'type' => 'float',
+                  'not null' => TRUE
+              ),
+              'longitude' => array(
+                  'description' => 'Default longitude',
+                  'type' => 'float',
+                  'not null' => TRUE
+              ),
+              'options' => array(
+                  'description' => 'Default options.',
+                  'type' => 'blob',
+                  'size' => 'big',
+                  'not null' => TRUE,
+              ),
+              'controls' => array(
+                  'description' => 'Available controls.',
+                  'type' => 'blob',
+                  'size' => 'big',
+                  'not null' => TRUE,
+              ),
+          ),
+          'primary key' => array('gmcid'),
+          'unique keys' => array(
+              'name' => array('config_name')
+          )
+      )
+  );
+  return $schemas;
+}
