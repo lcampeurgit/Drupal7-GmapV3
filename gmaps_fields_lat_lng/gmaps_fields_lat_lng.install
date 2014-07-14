@@ -1,0 +1,24 @@
+<?php
+
+/**
+ * Implements hook_field_schema
+ */
+function gmaps_fields_lat_lng_field_schema($field) {
+  $columns = array();
+  $indexes = array();
+  switch ($field['type']) {
+    default:
+      break;
+    case 'gmaps_fields_lat_lng':
+        $columns = array(
+          'lat' => array('type' => 'float', 'not null' => FALSE),
+          'lng' => array('type' => 'float', 'not null' => FALSE),
+        );
+        $indexes = array();
+      break;
+  }
+  return array(
+    'columns' => $columns,
+    'indexes' => $indexes,
+  );
+}
