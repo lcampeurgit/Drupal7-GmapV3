@@ -1,0 +1,98 @@
+<?php
+define('GOOGLE_MAPS_API_NODES_VIEW_MODE_FIELD_HIDDEN', 'hidden');
+
+/**
+ * Implements hook_entity_info_alter
+ */
+function google_maps_api_nodes_entity_info_alter(&$entity_info) {
+	$entity_info['node']['view modes']['gmaps_marker'] = array(
+			'label' => t('Google Maps Marker'),
+			'custom settings' => TRUE,
+	);
+	$entity_info['node']['view modes']['gmaps_infobulle'] = array(
+			'label' => t('Google Maps Infobulle'),
+			'custom settings' => TRUE,
+	);
+}
+
+/**
+ * Implements hook_preprocess_node().
+ */
+function google_maps_api_nodes_preprocess_node(&$vars) {
+	if($vars['view_mode'] === 'gmaps_marker') {
+		$vars['theme_hook_suggestions'][] = 'gmaps_marker_nodes_view';
+	}
+	if($vars['view_mode'] === 'gmaps_infobulle') {
+		$vars['theme_hook_suggestions'][] = 'gmaps_infobulle_nodes_view';
+	}
+}
+
+/**
+ * Implements hook_theme().
+ */
+function google_maps_api_nodes_theme() {
+	return array(
+		'gmaps_marker_nodes_view' => array(
+			'variables' => array(
+				'latitude' => NULL,
+				'longitude' => NULL,
+				'title' => '',
+				'info_window' => '',
+				'icon' => ''
+			),
+		),
+		'gmaps_infobulle_nodes_view' => array(
+			'variables' => array(
+				'node_view' => NULL,
+			),
+		),
+	);
+}
+
+/**
+ * Implement theme_HOOK
+ */
+function theme_gmaps_marker_nodes_view($variables) {
+	$node = node_load($variables['nid']);
+	$fields = field_info_instances('node', $node->type);
+	
+	$fields_name = array();
+	foreach ($fields as $field) {
+		if (isset($field['widget']['module']) && $field['widget']['module'] === 'gmaps_fields_lat_lng') {
+			$fields_name[] = $field['field_name'];
+		}
+	}
+
+	$markers = array();
+	if (empty($fields_name)) {
+		return drupal_json_encode($markers);
+	}
+	$info_window = field_attach_view('node', $node, 'gmaps_marker');
+	$info_window_rendered = drupal_render($info_window);
+	foreach ($fields_name as $field_name) {
+		$items = field_get_items('node', $node, $field_name);
+		foreach ($items as $item) {
+			$markers[] = array(
+				'position' => array(
+					'lat' => $item['lat'],
+					'lng' => $item['lng'],
+				),
+				'title' => 'node-' . $node->type . '-' . $node->nid,
+				'info_window' => $info_window_rendered,
+				'icon' => ''
+			);
+		}
+	}
+	
+	return drupal_json_encode($markers);
+}
+
+/**
+ * Implement theme_HOOK
+ */
+function theme_gmaps_infobulle_nodes_view($variables) {
+	$node = node_load($variables['nid']);
+	$info_window = field_attach_view('node', $node, 'gmaps_infobulle');
+	$info_window_rendered = drupal_render($info_window);
+	return $info_window_rendered;
+}

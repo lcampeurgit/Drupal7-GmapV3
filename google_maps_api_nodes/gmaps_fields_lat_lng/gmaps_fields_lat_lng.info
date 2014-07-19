@@ -1,0 +1,7 @@
+name = Gmap Fields "Latitude Longitude"
+description = Contains Latitude and Longitude fields
+package = Google Maps
+version = "7.x-0.1beta"
+core = 7.x
+
+dependencies[] = google_maps_api_nodes

@@ -1,0 +1,9 @@
+name = Google Maps Plugins Manager
+description = Show informations about plugins
+package = Google Maps
+version = "7.x-0.1beta"
+core = 7.x
+
+dependencies[] = google_maps_api
+
+configure = structure/googlemaps/plugins

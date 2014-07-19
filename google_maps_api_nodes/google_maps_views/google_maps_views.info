@@ -1,0 +1,9 @@
+name = Google Maps Views
+description = Description
+package = Google Maps
+version = "7.x-0.1beta"
+core = 7.x
+
+dependencies[] = views
+
+files[] = plugins/views_plugin_style_google_maps_views_plugins.inc

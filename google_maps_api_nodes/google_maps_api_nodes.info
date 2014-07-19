@@ -1,0 +1,7 @@
+name = Google Maps Node Management API
+description = Enable some functions for nodes, custom nodes view type
+package = Google Maps
+version = "7.x-0.1beta"
+core = 7.x
+
+dependencies[] = google_maps_api

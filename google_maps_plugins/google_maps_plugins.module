@@ -1,0 +1,50 @@
+<?php
+/**
+ * Implements hook_menu
+ */
+function google_maps_plugins_menu() {
+  $items = array();
+  $items['admin/structure/googlemaps/plugins'] = array(
+    'title' => 'Plugins enabled',
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'google_maps_plugins_list',
+    'access arguments' => array('google_maps_api_administration'),
+  );
+  return $items;
+}
+
+/**
+ * Hook_menu callback via drupal_get_form
+ */
+function google_maps_plugins_list() {
+  $header = array(
+    'name' => array('data' => 'name'),
+    'description' => array('data' => 'description')
+  );
+  
+  $plugins = google_maps_plugins_get_hook_plugins();
+  
+  
+  $form['plugins'] = array(
+    '#theme' => 'table',
+    '#header' => $header,
+    '#rows' => $plugins,
+    '#empty' => t('No plugins available.')
+  );
+  
+  return $form;
+}
+
+/**
+ * Call hook_google_maps_plugins and merge results to get all plugins available
+ * 
+ * @return array
+ */
+function google_maps_plugins_get_hook_plugins() {
+  $plugins = array();
+  $modules = module_implements('google_maps_plugins');
+  foreach ($modules as $module) {
+    $plugins = array_merge($plugins, module_invoke($module, 'google_maps_plugins'));
+  }
+  return $plugins;
+}

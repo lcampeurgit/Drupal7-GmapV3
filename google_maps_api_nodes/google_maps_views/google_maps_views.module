@@ -1,0 +1,78 @@
+<?php
+/**
+ * Implements hook_google_maps_plugins
+ */
+function google_maps_views_google_maps_plugins() {
+	return array(
+		'google_maps_views' => array(
+			'name' => t('Add display style to views'),
+			'description' => t("Add display style using gmap marker as node display view"),
+		)
+	);
+}
+
+/**
+ * Implements hook_theme().
+ */
+function google_maps_views_theme() {
+	return array(
+		'google_maps_views' => array(
+			'variables' => array(
+				'node_view' => NULL,
+			),
+		)	
+	);
+}
+
+
+/**
+ * Implements hook_views_api().
+ */
+function google_maps_views_views_api() { 
+	return array(
+		'api' => 3
+	);
+}
+
+/**
+ * Implement theme_HOOK
+ */
+function theme_google_maps_views(&$variables) {
+	$view     = $variables['view'];
+	$result   = $variables['result'] = $variables['rows'];
+	$variables['rows'] = array();
+	$variables['field_classes'] = array();
+	$variables['header'] = array();
+	
+	$options  = $view->style_plugin->options;
+	$handler  = $view->style_plugin;
+	$nids = array();
+	foreach ($view->result as $result) {
+		$nids[] = $result->node_nid;
+	}
+	$nodes = node_load_multiple($nids);
+	
+	$markers = array();
+	foreach ($nodes as $node) {
+		$nv = node_view($node, 'gmaps_marker');
+		$markers = array_merge($markers, drupal_json_decode(drupal_render($nv)));
+	}
+	
+	$render_array = array(
+			'#markup' => '<div id="map-container"></div>'
+	);
+	
+	$configuration = google_maps_api_get_default_configuration();
+	$render_array['#attached'] = array(
+			'js' => array(
+					'https://maps.googleapis.com/maps/api/js?v=3&libraries=geometry&key=' . google_maps_api_variables_select('key') => array('type' => 'external'),
+					drupal_get_path('module', 'google_maps_api') . '/api/google_maps_api.js' => array('type' => 'file'),
+					drupal_get_path('module', 'google_maps_views') . '/scripts/google_maps_views.js' => array('type' => 'file'),
+					array('data' => array('google_maps_views' => array('configuration' => $configuration, 'markers' => $markers)), 'type' => 'setting')
+			),
+			'css' => array(
+					drupal_get_path('module', 'google_maps_views') . '/css/google_maps_views.css' => array('type' => 'file'),
+			)
+	);
+	return drupal_render($render_array);
+}
