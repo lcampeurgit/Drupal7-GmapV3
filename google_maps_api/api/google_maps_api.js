@@ -3,15 +3,19 @@
   
   Drupal.google_maps_api.Markers = function() {
     this.markers = [];
-  }
+  };
   
   Drupal.google_maps_api.Markers.prototype.AddMarker = function(marker, name) {
     var new_marker = {
       id : name,
       element : marker
-    }
+    };
     this.markers.push(new_marker);
-  }
+  };
+  
+  Drupal.google_maps_api.Markers.prototype.GetMarkers = function() {
+	    return this.markers;
+  };
   
   Drupal.google_maps_api.GoogleMap = function(dom_id, config) {
     this.dom_id = dom_id;
@@ -32,6 +36,7 @@
     this.map_type_id = google.maps.MapTypeId.ROADMAP;
     
     this.markers = new Drupal.google_maps_api.Markers();
+    this.bounds = new google.maps.LatLngBounds();
   };
   
   Drupal.google_maps_api.GoogleMap.prototype.SetConfigByObject = function (configuration) {
@@ -50,7 +55,7 @@
        overview_map_control: configuration.controls.overview_map_control,
      };
      this.SetConfig(configs);
-  }
+  };
   
   Drupal.google_maps_api.GoogleMap.prototype.SetConfig = function(configs) {
     if (configs.latitude != undefined) {
@@ -203,7 +208,7 @@
   Drupal.google_maps_api.GoogleMap.prototype.AddMarker = function(marker) {
     var markers = [marker];
     this.AddMarkers(markers);
-  }
+  };
   
   Drupal.google_maps_api.GoogleMap.prototype.AddMarkers = function(markers) {
     for (i in markers) {
@@ -214,5 +219,13 @@
       });
       this.markers.AddMarker(marker, markers[i].name);
     }
-  }
+  };
+  
+  Drupal.google_maps_api.GoogleMap.prototype.FitBoundsFromMarkers = function() {
+	var markers = this.markers.GetMarkers();
+    for (i in markers) {
+      this.bounds.extend(markers[i].element.position);
+    }
+    this.map.fitBounds(this.bounds);
+  };
 })(jQuery);
